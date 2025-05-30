@@ -7,12 +7,209 @@ import io
 import datetime
 import os
 from typing import Optional, Dict, Any, List
+import streamlit.components.v1 as components
 
 # Import our custom modules
 from data_processor import FinancialDataProcessor
 from ai_analyzer import get_analyzer, Phi4Analyzer, OfflineAnalyzer
 from visualizations import FinancialVisualizer
 from config import *
+
+# Add these functions after the imports section (around line 15)
+
+def create_voice_explanation_component(text_content, voice_id="voice1"):
+    """Create a text-to-speech component for explaining analysis"""
+    
+    # Clean and prepare text for speech
+    clean_text = text_content.replace('#', '').replace('*', '').replace('`', '').replace('\n', ' ')
+    
+    # HTML component with speech synthesis
+    speech_html = f"""
+    <div style="background: #f0f2f6; padding: 15px; border-radius: 10px; margin: 10px 0;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <h4 style="margin: 0; color: #1f77b4;">🎤 AI Voice Explanation</h4>
+            <button id="playBtn_{voice_id}" onclick="speakText_{voice_id}()" 
+                    style="background: #1f77b4; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                ▶️ Play Explanation
+            </button>
+            <button id="pauseBtn_{voice_id}" onclick="pauseSpeech_{voice_id}()" 
+                    style="background: #ff7f0e; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                ⏸️ Pause
+            </button>
+            <button id="stopBtn_{voice_id}" onclick="stopSpeech_{voice_id}()" 
+                    style="background: #d62728; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                ⏹️ Stop
+            </button>
+        </div>
+        
+        <div style="margin: 10px 0;">
+            <label for="voiceSelect_{voice_id}" style="margin-right: 10px;">🗣️ Voice:</label>
+            <select id="voiceSelect_{voice_id}" style="padding: 5px; border-radius: 3px;">
+                <option value="0">Default Voice</option>
+            </select>
+            
+            <label for="speedRange_{voice_id}" style="margin-left: 20px; margin-right: 10px;">⚡ Speed:</label>
+            <input type="range" id="speedRange_{voice_id}" min="0.5" max="2" value="1" step="0.1" 
+                   style="width: 100px;" onchange="updateSpeed_{voice_id}()">
+            <span id="speedValue_{voice_id}">1.0x</span>
+        </div>
+        
+        <div id="status_{voice_id}" style="margin: 10px 0; font-style: italic; color: #666;">
+            Ready to speak...
+        </div>
+    </div>
+
+    <script>
+        let currentUtterance_{voice_id} = null;
+        let voices_{voice_id} = [];
+        let currentSpeed_{voice_id} = 1.0;
+        
+        // Text content to speak
+        const textToSpeak_{voice_id} = `{clean_text}`;
+        
+        // Initialize voices
+        function loadVoices_{voice_id}() {{
+            voices_{voice_id} = speechSynthesis.getVoices();
+            const voiceSelect = document.getElementById('voiceSelect_{voice_id}');
+            voiceSelect.innerHTML = '';
+            
+            voices_{voice_id}.forEach((voice, index) => {{
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${{voice.name}} (${{voice.lang}})`;
+                voiceSelect.appendChild(option);
+            }});
+        }}
+        
+        // Load voices when available
+        speechSynthesis.onvoiceschanged = loadVoices_{voice_id};
+        loadVoices_{voice_id}();
+        
+        function speakText_{voice_id}() {{
+            // Stop any current speech
+            speechSynthesis.cancel();
+            
+            // Create new utterance
+            currentUtterance_{voice_id} = new SpeechSynthesisUtterance(textToSpeak_{voice_id});
+            
+            // Set voice
+            const voiceSelect = document.getElementById('voiceSelect_{voice_id}');
+            const selectedVoice = voices_{voice_id}[voiceSelect.value];
+            if (selectedVoice) {{
+                currentUtterance_{voice_id}.voice = selectedVoice;
+            }}
+            
+            // Set speed
+            currentUtterance_{voice_id}.rate = currentSpeed_{voice_id};
+            
+            // Set up event listeners
+            currentUtterance_{voice_id}.onstart = function() {{
+                document.getElementById('status_{voice_id}').textContent = '🗣️ Speaking...';
+                document.getElementById('playBtn_{voice_id}').disabled = true;
+            }};
+            
+            currentUtterance_{voice_id}.onend = function() {{
+                document.getElementById('status_{voice_id}').textContent = '✅ Finished speaking';
+                document.getElementById('playBtn_{voice_id}').disabled = false;
+            }};
+            
+            currentUtterance_{voice_id}.onerror = function(event) {{
+                document.getElementById('status_{voice_id}').textContent = '❌ Error: ' + event.error;
+                document.getElementById('playBtn_{voice_id}').disabled = false;
+            }};
+            
+            // Start speaking
+            speechSynthesis.speak(currentUtterance_{voice_id});
+        }}
+        
+        function pauseSpeech_{voice_id}() {{
+            if (speechSynthesis.speaking) {{
+                speechSynthesis.pause();
+                document.getElementById('status_{voice_id}').textContent = '⏸️ Paused';
+            }}
+        }}
+        
+        function stopSpeech_{voice_id}() {{
+            speechSynthesis.cancel();
+            document.getElementById('status_{voice_id}').textContent = '⏹️ Stopped';
+            document.getElementById('playBtn_{voice_id}').disabled = false;
+        }}
+        
+        function updateSpeed_{voice_id}() {{
+            const speedRange = document.getElementById('speedRange_{voice_id}');
+            currentSpeed_{voice_id} = parseFloat(speedRange.value);
+            document.getElementById('speedValue_{voice_id}').textContent = currentSpeed_{voice_id}.toFixed(1) + 'x';
+        }}
+    </script>
+    """
+    
+    return speech_html
+
+def generate_intelligent_voice_explanation(analyzer, data_sample, analysis_type, statement_type):
+    """Generate AI-powered voice explanations"""
+    
+    if isinstance(analyzer, Phi4Analyzer) and analyzer.api_available:
+        try:
+            voice_prompt = f"""
+            Create a clear, conversational explanation for a voice assistant about this {analysis_type} 
+            of a {statement_type}. Make it:
+            - Easy to understand when spoken aloud
+            - 2-3 minutes of speaking time
+            - Include specific insights from the data
+            - Use simple language, avoid complex jargon
+            - Structure it as if you're explaining to a business owner
+            
+            Data sample: {data_sample[:1000]}
+            
+            Focus on the most important insights and actionable information.
+            """
+            
+            voice_explanation = analyzer._make_request(voice_prompt, max_tokens=800)
+            return voice_explanation
+            
+        except Exception as e:
+            return f"I'll explain the {analysis_type} results. The analysis shows important financial insights that can help guide your business decisions."
+    
+    else:
+        return generate_voice_explanation(analysis_type, data_sample)
+
+def generate_voice_explanation(analysis_type, data, ratios=None, chart_type=None):
+    """Generate voice-friendly explanations for different types of analysis"""
+    
+    explanations = {
+        "financial_overview": f"""
+        Let me explain your financial overview. 
+        Your data contains {len(data) if data is not None else 'multiple'} rows and {len(data.columns) if data is not None else 'several'} columns of financial information.
+        This represents a comprehensive view of your financial position.
+        The key metrics show the overall health and performance of your organization.
+        """,
+        
+        "ratio_analysis": f"""
+        Now let's discuss your financial ratios analysis.
+        {f"I've calculated {len(ratios)} key financial ratios for you." if ratios else ""}
+        These ratios help us understand your company's liquidity, profitability, and efficiency.
+        Liquidity ratios show how well you can meet short-term obligations.
+        Profitability ratios indicate how effectively you generate profits.
+        Efficiency ratios reveal how well you use your assets.
+        """,
+        
+        "chart_explanation": f"""
+        Looking at this {chart_type or 'chart'}, we can see important trends in your data.
+        The visualization helps identify patterns that might not be obvious in raw numbers.
+        Pay attention to any significant increases or decreases over time.
+        These trends can indicate areas of strength or concern in your financial performance.
+        """,
+        
+        "ai_insights": """
+        The AI analysis has identified several key insights from your financial data.
+        These insights are based on advanced pattern recognition and financial expertise.
+        The recommendations provided can help guide your strategic decision-making.
+        Consider these insights alongside your business knowledge and market conditions.
+        """
+    }
+    
+    return explanations.get(analysis_type, "Analysis explanation is ready.")
+
 
 def setup_openrouter_api():
     """
@@ -237,6 +434,7 @@ def main():
                     "📤 Export"
                 ])
                 
+                
                 with tab1:
                     st.markdown("## 🧠 AI-Powered Financial Analysis")
                     
@@ -260,6 +458,16 @@ def main():
                                         
                                         st.markdown("### 📊 Comprehensive Financial Analysis")
                                         st.markdown(analysis)
+                                        
+                                        # Add AI-powered voice explanation
+                                        st.markdown("### 🎤 Voice Explanation")
+                                        voice_explanation = generate_intelligent_voice_explanation(
+                                            phi4_analyzer, data_sample, "comprehensive financial analysis", statement_type
+                                        )
+                                        
+                                        voice_html = create_voice_explanation_component(voice_explanation, "ai_comprehensive")
+                                        components.html(voice_html, height=200)
+                                        
                                     except Exception as e:
                                         st.error(f"❌ Analysis failed: {str(e)}")
                             
@@ -272,6 +480,16 @@ def main():
                                         
                                         st.markdown("### 🎯 Key Financial Metrics")
                                         st.markdown(metrics)
+                                        
+                                        # Add voice explanation for metrics
+                                        st.markdown("### 🎤 Metrics Explanation")
+                                        voice_explanation = generate_intelligent_voice_explanation(
+                                            phi4_analyzer, data_sample, "key financial metrics extraction", statement_type
+                                        )
+                                        
+                                        voice_html = create_voice_explanation_component(voice_explanation, "metrics_explanation")
+                                        components.html(voice_html, height=200)
+                                        
                                     except Exception as e:
                                         st.error(f"❌ Metrics extraction failed: {str(e)}")
                         
@@ -285,6 +503,16 @@ def main():
                                         
                                         st.markdown("### ⚖️ Comparative Analysis")
                                         st.markdown(comparison)
+                                        
+                                        # Add voice explanation for comparison
+                                        st.markdown("### 🎤 Comparative Analysis Explanation")
+                                        voice_explanation = generate_intelligent_voice_explanation(
+                                            phi4_analyzer, data_sample, "comparative financial analysis", statement_type
+                                        )
+                                        
+                                        voice_html = create_voice_explanation_component(voice_explanation, "comparative_analysis")
+                                        components.html(voice_html, height=200)
+                                        
                                     except Exception as e:
                                         st.error(f"❌ Comparative analysis failed: {str(e)}")
                             
@@ -297,10 +525,20 @@ def main():
                                         
                                         st.markdown("### 🚀 Strategic Business Insights")
                                         st.markdown(insights)
+                                        
+                                        # Add voice explanation for insights
+                                        st.markdown("### 🎤 Strategic Insights Explanation")
+                                        voice_explanation = generate_intelligent_voice_explanation(
+                                            phi4_analyzer, data_sample, "strategic business insights", statement_type
+                                        )
+                                        
+                                        voice_html = create_voice_explanation_component(voice_explanation, "strategic_insights")
+                                        components.html(voice_html, height=200)
+                                        
                                     except Exception as e:
                                         st.error(f"❌ Insights generation failed: {str(e)}")
                         
-                        # Real-time Q&A
+                        # Real-time Q&A with voice
                         st.markdown("### 💬 Ask the AI Analyst")
                         user_question = st.text_input(
                             "Ask a specific question about your financial data:",
@@ -326,13 +564,23 @@ def main():
                                     
                                     st.markdown("### 🎯 AI Response")
                                     st.markdown(answer)
+                                    
+                                    # Add voice explanation for Q&A
+                                    st.markdown("### 🎤 Voice Answer")
+                                    voice_explanation = generate_intelligent_voice_explanation(
+                                        phi4_analyzer, data_sample, f"answer to your question: {user_question}", statement_type
+                                    )
+                                    
+                                    voice_html = create_voice_explanation_component(voice_explanation, "qa_response")
+                                    components.html(voice_html, height=200)
+                                    
                                 except Exception as e:
                                     st.error(f"❌ AI response failed: {str(e)}")
                     
                     else:
                         st.warning("⚠️ AI service is currently unavailable. Using offline analysis mode.")
                         
-                        # Offline analysis options
+                        # Offline analysis options with basic voice
                         if st.button("📊 Run Offline Analysis"):
                             with st.spinner("Running offline analysis..."):
                                 try:
@@ -341,9 +589,17 @@ def main():
                                     data_text = data_processor.data.to_string()
                                     analysis = offline_analyzer.analyze_financial_data(data_text, statement_type)
                                     st.markdown(analysis)
+                                    
+                                    # Add basic voice explanation for offline mode
+                                    st.markdown("### 🎤 Analysis Explanation")
+                                    voice_explanation = generate_voice_explanation("ai_insights", data_processor.data)
+                                    voice_html = create_voice_explanation_component(voice_explanation, "offline_analysis")
+                                    components.html(voice_html, height=200)
+                                    
                                 except Exception as e:
                                     st.error(f"❌ Offline analysis failed: {str(e)}")
 
+                
           
                 with tab2:
                     st.markdown("## 📊 Financial Ratios Analysis")
@@ -380,17 +636,55 @@ def main():
                                             help=ratio_info.get("description", "Financial ratio")
                                         )
                         
+                        # Add comprehensive voice explanation for all ratios
+                        st.markdown("### 🎤 Complete Ratio Analysis Explanation")
+                        
+                        # Create detailed ratio explanation
+                        detailed_explanation = f"""
+                        Let me walk you through your complete financial ratio analysis.
+                        
+                        I've calculated {len(ratios)} key financial ratios that provide insights into different aspects of your business performance.
+                        
+                        Starting with liquidity ratios: These measure your ability to meet short-term obligations.
+                        """
+                        
+                        # Add specific ratio explanations
+                        for category, ratio_list in ratio_categories.items():
+                            category_ratios = [r for r in ratio_list if r in ratios]
+                            if category_ratios:
+                                category_name = category.split(' ', 1)[1]  # Remove emoji
+                                detailed_explanation += f"\n\nFor {category_name}: "
+                                
+                                for ratio_name in category_ratios[:3]:  # Limit to 3 ratios per category
+                                    ratio_display = ratio_name.replace("_", " ").title()
+                                    value = ratios[ratio_name]
+                                    detailed_explanation += f"Your {ratio_display} is {value:.2f}. "
+                                    
+                                    # Add interpretation
+                                    if "current_ratio" in ratio_name and value > 2:
+                                        detailed_explanation += "This indicates strong liquidity. "
+                                    elif "current_ratio" in ratio_name and value < 1:
+                                        detailed_explanation += "This suggests potential liquidity concerns. "
+                                    elif "debt_to_equity" in ratio_name and value > 1:
+                                        detailed_explanation += "This shows higher leverage. "
+                                    elif "margin" in ratio_name and value > 0.1:
+                                        detailed_explanation += "This indicates good profitability. "
+                        
+                        detailed_explanation += "\n\nThese ratios should be compared to industry benchmarks and historical performance for better context."
+                        
+                        voice_html = create_voice_explanation_component(detailed_explanation, "complete_ratio_analysis")
+                        components.html(voice_html, height=200)
+                        
                         # Ratio trends visualization
                         if len(data_processor.get_numeric_columns()) > 1:
                             st.markdown("### 📈 Ratio Trends")
                             
-                            # Create ratio trends chart - MODIFIED to use existing methods
+                            # Create ratio trends chart
                             visualizer = FinancialVisualizer(data_processor.data)
                             
                             # Get time periods from data
                             numeric_cols = data_processor.get_numeric_columns()
                             if len(numeric_cols) >= 2:
-                                # Instead of using create_ratio_trends, use a standard plotly figure
                                 fig = go.Figure()
                                 
                                 # Add a trace for each ratio (up to 5)
@@ -417,8 +711,23 @@ def main():
                                 )
                                 
                                 st.plotly_chart(fig, use_container_width=True)
+                                
+                                # Add voice explanation for trends
+                                st.markdown("### 🎤 Trend Analysis Explanation")
+                                trend_explanation = """
+                                Looking at your ratio trends over time, we can identify important patterns in your financial performance.
+                                
+                                Upward trends in profitability ratios indicate improving efficiency and market position.
+                                Stable liquidity ratios suggest consistent cash management.
+                                Changes in leverage ratios reflect your financing strategy evolution.
+                                
+                                Pay special attention to any dramatic changes, as these may indicate significant business events or market conditions that require management attention.
+                                """
+                                
+                                voice_html = create_voice_explanation_component(trend_explanation, "trend_analysis")
+                                components.html(voice_html, height=200)
                         
-                        # Industry benchmarking
+                        # Industry benchmarking with voice explanation
                         if include_benchmarking:
                             st.markdown("### 🏆 Industry Benchmarking")
                             
@@ -473,6 +782,40 @@ def main():
                                     )
                                     
                                     st.plotly_chart(fig, use_container_width=True)
+                                    
+                                    # Add voice explanation for benchmarking
+                                    st.markdown("### 🎤 Benchmarking Analysis")
+                                    
+                                    # Create intelligent benchmarking explanation
+                                    benchmark_explanation = f"""
+                                    Now let's compare your performance against the {industry} industry standards.
+                                    
+                                    This benchmarking analysis helps you understand where you stand relative to your peers.
+                                    """
+                                    
+                                    # Analyze performance vs benchmarks
+                                    above_average = 0
+                                    below_average = 0
+                                    
+                                    for _, row in benchmark_df.iterrows():
+                                        if row["Your Company"] > row["Industry Average"]:
+                                            above_average += 1
+                                            benchmark_explanation += f"Your {row['Ratio']} of {row['Your Company']:.2f} is above the industry average of {row['Industry Average']:.2f}. "
+                                        else:
+                                            below_average += 1
+                                            benchmark_explanation += f"Your {row['Ratio']} of {row['Your Company']:.2f} is below the industry average of {row['Industry Average']:.2f}. "
+                                    
+                                    benchmark_explanation += f"\n\nOverall, you're performing above average in {above_average} ratios and below average in {below_average} ratios compared to the {industry} industry."
+                                    
+                                    if above_average > below_average:
+                                        benchmark_explanation += " This suggests strong overall performance relative to your industry peers."
+                                    elif below_average > above_average:
+                                        benchmark_explanation += " This indicates opportunities for improvement to reach industry standards."
+                                    else:
+                                        benchmark_explanation += " Your performance is balanced, with both strengths and areas for improvement."
+                                    
+                                    voice_html = create_voice_explanation_component(benchmark_explanation, "benchmarking_analysis")
+                                    components.html(voice_html, height=200)
                     
                     else:
                         st.warning("⚠️ Unable to calculate financial ratios. Please ensure your data contains the necessary financial accounts.")
@@ -490,7 +833,8 @@ def main():
                             key_accounts = STATEMENT_TYPES.get(statement_type, {}).get('key_accounts', [])
                             for account in key_accounts:
                                 st.markdown(f"- {account.title()}")
-                
+
+
                 with tab3:
                     st.markdown("## 📈 Interactive Visualizations")
                     
@@ -537,9 +881,8 @@ def main():
                             )
                         
                         if y_columns:
-                            # MODIFIED: Create visualizations directly with plotly instead of using missing methods
+                            # Create visualizations
                             if chart_type == "Bar Chart":
-                                # Create a simple bar chart
                                 fig = px.bar(
                                     data_processor.data,
                                     x=x_column,
@@ -547,8 +890,15 @@ def main():
                                     title=f"Bar Chart: {x_column} vs {', '.join(y_columns)}",
                                     color_discrete_sequence=COLOR_SCHEMES[color_scheme]
                                 )
+                            elif chart_type == "Pie Chart" and len(y_columns) == 1:
+                                fig = px.pie(
+                                    data_processor.data,
+                                    names=x_column,
+                                    values=y_columns[0],
+                                    title=f"Pie Chart: {y_columns[0]} by {x_column}",
+                                    color_discrete_sequence=COLOR_SCHEMES[color_scheme]
+                                    )
                             elif chart_type == "Line Chart":
-                                # Create a line chart
                                 fig = px.line(
                                     data_processor.data,
                                     x=x_column,
@@ -556,17 +906,7 @@ def main():
                                     title=f"Line Chart: {x_column} vs {', '.join(y_columns)}",
                                     color_discrete_sequence=COLOR_SCHEMES[color_scheme]
                                 )
-                            elif chart_type == "Pie Chart" and len(y_columns) == 1:
-                                # Create a pie chart
-                                fig = px.pie(
-                                    data_processor.data,
-                                    names=x_column,
-                                    values=y_columns[0],
-                                    title=f"Pie Chart: {y_columns[0]} by {x_column}",
-                                    color_discrete_sequence=COLOR_SCHEMES[color_scheme]
-                                )
                             elif chart_type == "Area Chart":
-                                # Create an area chart
                                 fig = px.area(
                                     data_processor.data,
                                     x=x_column,
@@ -575,7 +915,6 @@ def main():
                                     color_discrete_sequence=COLOR_SCHEMES[color_scheme]
                                 )
                             elif chart_type == "Scatter Plot" and len(y_columns) >= 2:
-                                # Create a scatter plot
                                 fig = px.scatter(
                                     data_processor.data,
                                     x=y_columns[0],
@@ -585,7 +924,6 @@ def main():
                                     color_discrete_sequence=COLOR_SCHEMES[color_scheme]
                                 )
                             else:
-                                # Default to bar chart
                                 fig = px.bar(
                                     data_processor.data,
                                     x=x_column,
@@ -595,8 +933,66 @@ def main():
                                 )
                             
                             st.plotly_chart(fig, use_container_width=True)
+                            
+                            # Add voice explanation for the chart
+                            st.markdown("### 🎤 Chart Analysis")
+                            
+                            # Generate intelligent chart explanation
+                            chart_explanation = f"""
+                            Let me explain this {chart_type.lower()} visualization for you.
+                            
+                            This chart shows the relationship between {x_column} and {', '.join(y_columns)}.
+                            
+                            """
+                            
+                            # Add specific insights based on chart type
+                            if chart_type == "Line Chart":
+                                chart_explanation += """
+                                Line charts are excellent for showing trends over time. Look for patterns such as:
+                                - Upward trends indicating growth
+                                - Downward trends showing decline
+                                - Seasonal patterns or cycles
+                                - Any sudden spikes or drops that might indicate significant events
+                                """
+                            elif chart_type == "Bar Chart":
+                                chart_explanation += """
+                                Bar charts help compare values across different categories. Pay attention to:
+                                - Which categories have the highest and lowest values
+                                - The relative differences between categories
+                                - Any outliers that stand out significantly
+                                - Overall distribution patterns
+                                """
+                            elif chart_type == "Pie Chart":
+                                chart_explanation += """
+                                Pie charts show the composition and relative proportions of your data. Notice:
+                                - Which segments make up the largest portions
+                                - How balanced or concentrated your data is
+                                - Any segments that are surprisingly large or small
+                                - The overall diversity of your financial components
+                                """
+                            elif chart_type == "Area Chart":
+                                chart_explanation += """
+                                Area charts emphasize the magnitude of change over time. Look for:
+                                - The overall volume and scale of changes
+                                - Periods of rapid growth or decline
+                                - How different components contribute to the total
+                                - Cumulative effects over time
+                                """
+                            elif chart_type == "Scatter Plot":
+                                chart_explanation += """
+                                Scatter plots reveal relationships and correlations between variables. Observe:
+                                - Whether points cluster together or spread out
+                                - Any clear upward or downward trends
+                                - Outliers that don't follow the general pattern
+                                - The strength of correlation between the variables
+                                """
+                            
+                            chart_explanation += f"\n\nThe data in this visualization can help you make informed decisions about your {statement_type.lower()} and overall financial strategy."
+                            
+                            voice_html = create_voice_explanation_component(chart_explanation, f"chart_{chart_type.lower().replace(' ', '_')}")
+                            components.html(voice_html, height=200)
                         
-                        # Pre-built financial visualizations
+                        # Pre-built financial visualizations with voice explanations
                         st.markdown("### 🏦 Financial Dashboard")
                         
                         dashboard_options = st.multiselect(
@@ -613,43 +1009,203 @@ def main():
                         
                         for option in dashboard_options:
                             if "Financial Overview" in option:
-                                # MODIFIED: Create a financial overview chart directly
+                                # Create a financial overview chart
                                 fig = px.bar(
                                     data_processor.data,
-                                    x=data_processor.data.columns[0],  # Assuming first column is labels
-                                    y=numeric_cols[:5],  # Use up to 5 numeric columns
+                                    x=data_processor.data.columns[0],
+                                    y=numeric_cols[:5],
                                     title="Financial Overview",
                                     barmode="group",
                                     color_discrete_sequence=COLOR_SCHEMES[color_scheme]
                                 )
                                 st.plotly_chart(fig, use_container_width=True)
+                                
+                                # Add voice explanation for financial overview
+                                st.markdown("#### 🎤 Financial Overview Explanation")
+                                overview_explanation = f"""
+                                This financial overview provides a comprehensive snapshot of your {statement_type.lower()}.
+                                
+                                The chart displays your key financial metrics side by side, making it easy to compare different aspects of your financial performance.
+                                
+                                Look for the highest and lowest bars to identify your strongest and weakest areas.
+                                This overview helps you quickly assess your overall financial health and identify areas that need attention.
+                                
+                                The grouped format allows you to see how different metrics relate to each other and spot any imbalances in your financial structure.
+                                """
+                                
+                                voice_html = create_voice_explanation_component(overview_explanation, "financial_overview")
+                                components.html(voice_html, height=200)
                             
                             elif "Trend Analysis" in option:
-                                # MODIFIED: Create a trend analysis chart directly
+                                # Create a trend analysis chart
                                 fig = px.line(
                                     data_processor.data,
-                                    x=data_processor.data.columns[0],  # Assuming first column is labels
-                                    y=numeric_cols[:5],  # Use up to 5 numeric columns
+                                    x=data_processor.data.columns[0],
+                                    y=numeric_cols[:5],
                                     title="Trend Analysis",
                                     markers=True,
                                     color_discrete_sequence=COLOR_SCHEMES[color_scheme]
                                 )
                                 st.plotly_chart(fig, use_container_width=True)
+                                
+                                # Add voice explanation for trend analysis
+                                st.markdown("#### 🎤 Trend Analysis Explanation")
+                                trend_explanation = """
+                                This trend analysis reveals how your financial metrics have changed over time.
+                                
+                                Each line represents a different financial metric, and the slope of each line tells you whether that metric is improving, declining, or remaining stable.
+                                
+                                Upward trending lines indicate positive growth or improvement in those areas.
+                                Downward trending lines suggest areas that may need attention or strategic intervention.
+                                Flat lines show stability, which can be positive or concerning depending on the metric.
+                                
+                                Pay special attention to any dramatic changes or inflection points, as these often correspond to significant business events or market conditions.
+                                
+                                Use this trend information to forecast future performance and make strategic planning decisions.
+                                """
+                                
+                                voice_html = create_voice_explanation_component(trend_explanation, "trend_analysis")
+                                components.html(voice_html, height=200)
                             
                             elif "Composition Analysis" in option:
-                                # MODIFIED: Create a composition analysis chart directly
+                                # Create a composition analysis chart
                                 if len(numeric_cols) > 0:
                                     fig = px.pie(
                                         data_processor.data,
-                                        names=data_processor.data.columns[0],  # Assuming first column is labels
-                                        values=numeric_cols[0],  # Use first numeric column
+                                        names=data_processor.data.columns[0],
+                                        values=numeric_cols[0],
                                         title="Composition Analysis",
                                         color_discrete_sequence=COLOR_SCHEMES[color_scheme]
                                     )
                                     st.plotly_chart(fig, use_container_width=True)
+                                    
+                                    # Add voice explanation for composition analysis
+                                    st.markdown("#### 🎤 Composition Analysis Explanation")
+                                    composition_explanation = f"""
+                                    This composition analysis shows how your {numeric_cols[0].replace('_', ' ')} is distributed across different categories.
+                                    
+                                    Each slice of the pie represents a different component, with the size indicating its relative importance or magnitude.
+                                    
+                                    Large slices represent your major components that have the most significant impact on your overall financial picture.
+                                    Small slices might represent niche areas or emerging segments that could be growth opportunities.
+                                    
+                                    A well-balanced composition typically shows diversification, which can reduce risk.
+                                    Highly concentrated compositions might indicate either strong focus or potential vulnerability.
+                                    
+                                    Use this analysis to understand your financial structure and identify opportunities for rebalancing or strategic focus.
+                                    """
+                                    
+                                    voice_html = create_voice_explanation_component(composition_explanation, "composition_analysis")
+                                    components.html(voice_html, height=200)
+                            
+                            elif "Performance Metrics" in option:
+                                # Create performance metrics visualization
+                                if len(numeric_cols) >= 2:
+                                    fig = px.scatter(
+                                        data_processor.data,
+                                        x=numeric_cols[0],
+                                        y=numeric_cols[1],
+                                        title="Performance Metrics Correlation",
+                                        color=data_processor.data.columns[0] if len(data_processor.data[data_processor.data.columns[0]].unique()) < 10 else None,
+                                        color_discrete_sequence=COLOR_SCHEMES[color_scheme]
+                                    )
+                                    st.plotly_chart(fig, use_container_width=True)
+                                    
+                                    # Add voice explanation for performance metrics
+                                    st.markdown("#### 🎤 Performance Metrics Explanation")
+                                    performance_explanation = f"""
+                                    This performance metrics analysis examines the relationship between {numeric_cols[0].replace('_', ' ')} and {numeric_cols[1].replace('_', ' ')}.
+                                    
+                                    Each point represents a data observation, and the pattern of points reveals important insights about your performance.
+                                    
+                                    If points cluster along an upward diagonal, it suggests a positive correlation - as one metric improves, so does the other.
+                                    If points cluster along a downward diagonal, it indicates a negative correlation - one metric improves while the other declines.
+                                    Scattered points with no clear pattern suggest these metrics are independent of each other.
+                                    
+                                    Points that fall far from the main cluster are outliers that deserve special attention, as they might represent exceptional performance or unusual circumstances.
+                                    
+                                    Understanding these relationships helps you identify which metrics drive others and where to focus your improvement efforts.
+                                    """
+                                    
+                                    voice_html = create_voice_explanation_component(performance_explanation, "performance_metrics")
+                                    components.html(voice_html, height=200)
+                            
+                            elif "Ratio Analysis" in option:
+                                # Create ratio analysis visualization if ratios are available
+                                ratios = data_processor.calculate_financial_ratios(statement_type)
+                                if ratios:
+                                    ratio_names = list(ratios.keys())[:6]  # Limit to 6 ratios
+                                    ratio_values = [ratios[name] for name in ratio_names]
+                                    
+                                    fig = go.Figure(data=go.Bar(
+                                        x=[name.replace('_', ' ').title() for name in ratio_names],
+                                        y=ratio_values,
+                                        marker_color=COLOR_SCHEMES[color_scheme][:len(ratio_names)]
+                                    ))
+                                    
+                                    fig.update_layout(
+                                        title="Key Financial Ratios",
+                                        xaxis_title="Financial Ratios",
+                                        yaxis_title="Ratio Value",
+                                        height=500
+                                    )
+                                    
+                                    st.plotly_chart(fig, use_container_width=True)
+                                    
+                                    # Add voice explanation for ratio analysis
+                                    st.markdown("#### 🎤 Ratio Analysis Dashboard Explanation")
+                                    ratio_dashboard_explanation = f"""
+                                    This ratio analysis dashboard presents your key financial ratios in an easy-to-compare format.
+                                    
+                                    I'm showing you {len(ratio_names)} important ratios that provide insights into different aspects of your financial health.
+                                    
+                                    Higher bars generally indicate stronger performance for profitability and efficiency ratios.
+                                    For debt ratios, moderate levels are typically preferred over extremely high or low values.
+                                    
+                                    Compare the relative heights of different ratio bars to identify your strongest and weakest areas.
+                                    
+                                    """
+                                    
+                                    # Add specific insights about the ratios shown
+                                    for i, (name, value) in enumerate(zip(ratio_names[:3], ratio_values[:3])):
+                                        ratio_display = name.replace('_', ' ').title()
+                                        ratio_dashboard_explanation += f"Your {ratio_display} of {value:.2f} "
+                                        
+                                        if value > 1 and 'ratio' in name:
+                                            ratio_dashboard_explanation += "shows strong performance. "
+                                        elif value < 1 and 'margin' in name:
+                                            ratio_dashboard_explanation += "indicates room for improvement. "
+                                        else:
+                                            ratio_dashboard_explanation += "is within typical ranges. "
+                                    
+                                    ratio_dashboard_explanation += "\n\nUse this dashboard to quickly assess your overall financial health and identify priorities for management attention."
+                                    
+                                    voice_html = create_voice_explanation_component(ratio_dashboard_explanation, "ratio_dashboard")
+                                    components.html(voice_html, height=200)
                     
                     else:
                         st.warning("⚠️ Insufficient numeric data for visualization. Please ensure your data contains numeric columns.")
+                        
+                        # Add voice explanation for insufficient data
+                        st.markdown("### 🎤 Data Requirements Explanation")
+                        data_requirements_explanation = """
+                        I notice that your data doesn't have enough numeric columns for creating meaningful visualizations.
+                        
+                        For effective financial analysis and visualization, your data should include:
+                        - At least two numeric columns with financial values
+                        - Clear column headers that identify what each number represents
+                        - Consistent number formatting without text mixed in with numbers
+                        - Multiple rows of data to show patterns and trends
+                        
+                        Consider reviewing your data file to ensure it includes the necessary numeric financial information.
+                        You might need to clean your data or reformat it to separate text descriptions from numeric values.
+                        
+                        Once you have properly formatted numeric data, you'll be able to create powerful visualizations that reveal important insights about your financial performance.
+                        """
+                        
+                        voice_html = create_voice_explanation_component(data_requirements_explanation, "data_requirements")
+                        components.html(voice_html, height=200)
+
                 
                 with tab4:
                     st.markdown("## 🔍 Advanced Data Explorer")
@@ -967,7 +1523,27 @@ This report is generated for informational purposes only and should not be consi
 *Report generated by Advanced Financial Statement Analyzer*  
 *Powered by Microsoft Phi-4 & Streamlit*
 """
-                            
+                            # In tab5, after generating the report, add this:
+                            if 'generated_report' in st.session_state:
+                                st.markdown("### 🎤 Report Summary")
+                                
+                                report_summary = f"""
+                                I've generated a comprehensive financial analysis report for your {statement_type.lower()}.
+                                
+                                This report includes executive summary, data overview, financial ratios analysis, and strategic insights.
+                                
+                                The report covers {len(data_processor.data)} rows of financial data with a quality score of {data_processor.assess_data_quality():.1f} percent.
+                                
+                                Key sections include detailed ratio calculations, industry benchmarking comparisons, and actionable recommendations for your business.
+                                
+                                You can export this report in multiple formats including markdown, HTML, and PDF preview.
+                                
+                                Use this comprehensive analysis to support your financial decision-making and strategic planning processes.
+                                """
+                                
+                                voice_html = create_voice_explanation_component(report_summary, "report_summary")
+                                components.html(voice_html, height=200)
+
                             # Display report based on format
                             if report_format == "Markdown":
                                 st.markdown(report_content)
