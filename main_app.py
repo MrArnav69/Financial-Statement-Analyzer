@@ -16,57 +16,16 @@ from config import *
 
 def setup_openrouter_api():
     """
-    Setup OpenRouter API configuration
+    Setup OpenRouter API configuration with a hardcoded API key
     """
+    # Hardcoded API key - replace with your actual OpenRouter API key
+    hardcoded_api_key = "your_openrouter_api_key_here"
+    
     st.sidebar.markdown("### 🧠 AI Configuration")
+    st.sidebar.success("✅ OpenRouter API key configured automatically")
     
-    # Check for existing API key
-    existing_key = os.getenv('OPENROUTER_API_KEY')
-    
-    if existing_key:
-        st.sidebar.success("✅ OpenRouter API key found in environment")
-        use_existing = st.sidebar.checkbox("Use existing API key", value=True)
-        if use_existing:
-            return existing_key
-    
-    # API key input
-    with st.sidebar.expander("🔑 Configure OpenRouter API"):
-        st.markdown("""
-        **Get your free API key from OpenRouter:**
-        1. Visit [OpenRouter.ai](https://openrouter.ai/)
-        2. Sign up for a free account
-        3. Go to [API Keys](https://openrouter.ai/keys)
-        4. Create a new API key
-        5. Paste it below
-        
-        **Free Tier Includes:**
-        - Microsoft Phi-4 Reasoning Plus
-        - GPT-3.5 Turbo
-        - Claude Haiku
-        - And more models!
-        """)
-        
-        api_key = st.text_input(
-            "OpenRouter API Key",
-            type="password",
-            help="Your OpenRouter API key for AI-powered analysis"
-        )
-        
-        if api_key:
-            # Test the API key
-            if st.button("🧪 Test API Key"):
-                with st.spinner("Testing API connection..."):
-                    test_analyzer = Phi4Analyzer(api_key)
-                    if test_analyzer.api_available:
-                        st.success("✅ API key is valid and working!")
-                        return api_key
-                    else:
-                        st.error("❌ API key test failed. Please check your key.")
-                        return None
-            
-            return api_key
-    
-    return None
+    return hardcoded_api_key
+
 
 def main():
     # Page configuration
@@ -120,20 +79,18 @@ def main():
     # Sidebar configuration
     st.sidebar.title("🎛️ Configuration")
     
-    # API Configuration
+    # API Configuration - now using hardcoded key
+    # API Configuration - now using hardcoded key
     api_key = setup_openrouter_api()
-    
-    # Analyzer selection
-    if api_key:
-        analyzer_type = st.sidebar.selectbox(
-            "🧠 Analysis Engine",
-            ["phi4", "offline"],
-            format_func=lambda x: "🤖 Microsoft Phi-4 (AI)" if x == "phi4" else "🔧 Offline Analysis"
-        )
-    else:
-        analyzer_type = "offline"
-        st.sidebar.info("💡 Add OpenRouter API key for AI-powered analysis")
-    
+
+    # Analyzer selection - always use phi4
+    analyzer_type = "phi4"
+    st.sidebar.success("🧠 Analysis Engine: Microsoft Phi-4 AI")
+
+    # Initialize analyzer - directly create Phi4Analyzer
+    analyzer = Phi4Analyzer(api_key)
+    st.sidebar.success("🧠 AI Engine: Microsoft Phi-4 Active")
+
     # Initialize analyzer
     try:
         analyzer = get_analyzer(api_key, analyzer_type)
@@ -144,6 +101,9 @@ def main():
     except Exception as e:
         st.sidebar.error(f"❌ Analyzer initialization failed: {str(e)}")
         analyzer = OfflineAnalyzer()
+    
+    # Rest of the main function remains the same...
+
     
     # File upload section
     st.sidebar.markdown("### 📁 File Upload")
@@ -280,7 +240,11 @@ def main():
                 with tab1:
                     st.markdown("## 🧠 AI-Powered Financial Analysis")
                     
-                    if isinstance(analyzer, Phi4Analyzer) and analyzer.api_available:
+                    # Initialize a fresh analyzer with the hardcoded API key
+                    phi4_analyzer = Phi4Analyzer(api_key)
+                    
+                    # Check if API is working
+                    if phi4_analyzer.api_available:
                         st.success("🤖 **Microsoft Phi-4 Reasoning Engine Active**")
                         
                         # Analysis options
@@ -289,36 +253,52 @@ def main():
                         with analysis_col1:
                             if st.button("🔍 Comprehensive Analysis", use_container_width=True):
                                 with st.spinner("🧠 Analyzing financial data with AI reasoning..."):
-                                    data_text = data_processor.data.to_string()
-                                    analysis = analyzer.analyze_financial_data(data_text, statement_type)
-                                    
-                                    st.markdown("### 📊 Comprehensive Financial Analysis")
-                                    st.markdown(analysis)
+                                    try:
+                                        # Limit data to avoid token limits
+                                        data_sample = data_processor.data.head(20).to_string()
+                                        analysis = phi4_analyzer.analyze_financial_data(data_sample, statement_type)
+                                        
+                                        st.markdown("### 📊 Comprehensive Financial Analysis")
+                                        st.markdown(analysis)
+                                    except Exception as e:
+                                        st.error(f"❌ Analysis failed: {str(e)}")
                             
                             if st.button("🔢 Extract Key Metrics", use_container_width=True):
                                 with st.spinner("🔍 Extracting key financial metrics..."):
-                                    data_text = data_processor.data.to_string()
-                                    metrics = analyzer.extract_key_metrics(data_text, statement_type)
-                                    
-                                    st.markdown("### 🎯 Key Financial Metrics")
-                                    st.markdown(metrics)
+                                    try:
+                                        # Limit data to avoid token limits
+                                        data_sample = data_processor.data.head(20).to_string()
+                                        metrics = phi4_analyzer.extract_key_metrics(data_sample, statement_type)
+                                        
+                                        st.markdown("### 🎯 Key Financial Metrics")
+                                        st.markdown(metrics)
+                                    except Exception as e:
+                                        st.error(f"❌ Metrics extraction failed: {str(e)}")
                         
                         with analysis_col2:
                             if st.button("📈 Comparative Analysis", use_container_width=True):
                                 with st.spinner("📊 Performing comparative analysis..."):
-                                    data_text = data_processor.data.to_string()
-                                    comparison = analyzer.comparative_analysis(data_text, statement_type)
-                                    
-                                    st.markdown("### ⚖️ Comparative Analysis")
-                                    st.markdown(comparison)
+                                    try:
+                                        # Limit data to avoid token limits
+                                        data_sample = data_processor.data.head(20).to_string()
+                                        comparison = phi4_analyzer.comparative_analysis(data_sample, statement_type)
+                                        
+                                        st.markdown("### ⚖️ Comparative Analysis")
+                                        st.markdown(comparison)
+                                    except Exception as e:
+                                        st.error(f"❌ Comparative analysis failed: {str(e)}")
                             
                             if st.button("💡 Strategic Insights", use_container_width=True):
                                 with st.spinner("🎯 Generating strategic insights..."):
-                                    data_text = data_processor.data.to_string()
-                                    insights = analyzer.generate_insights(data_text, statement_type)
-                                    
-                                    st.markdown("### 🚀 Strategic Business Insights")
-                                    st.markdown(insights)
+                                    try:
+                                        # Limit data to avoid token limits
+                                        data_sample = data_processor.data.head(20).to_string()
+                                        insights = phi4_analyzer.generate_insights(data_sample, statement_type)
+                                        
+                                        st.markdown("### 🚀 Strategic Business Insights")
+                                        st.markdown(insights)
+                                    except Exception as e:
+                                        st.error(f"❌ Insights generation failed: {str(e)}")
                         
                         # Real-time Q&A
                         st.markdown("### 💬 Ask the AI Analyst")
@@ -329,41 +309,42 @@ def main():
                         
                         if user_question and st.button("🤔 Get AI Answer"):
                             with st.spinner("🧠 AI is analyzing your question..."):
-                                data_text = data_processor.data.to_string()
-                                custom_prompt = f"""
-                                Based on this {statement_type} data:
-                                {data_text[:2000]}
-                                
-                                Please answer this specific question: {user_question}
-                                
-                                Provide a detailed, step-by-step analysis with specific references to the data.
-                                """
-                                answer = analyzer._make_request(custom_prompt, max_tokens=1500)
-                                
-                                st.markdown("### 🎯 AI Response")
-                                st.markdown(answer)
+                                try:
+                                    # Limit data to avoid token limits
+                                    data_sample = data_processor.data.head(20).to_string()
+                                    
+                                    custom_prompt = f"""
+                                    Based on this {statement_type} data:
+                                    {data_sample}
+                                    
+                                    Please answer this specific question: {user_question}
+                                    
+                                    Provide a detailed, step-by-step analysis with specific references to the data.
+                                    """
+                                    
+                                    answer = phi4_analyzer._make_request(custom_prompt, max_tokens=1500)
+                                    
+                                    st.markdown("### 🎯 AI Response")
+                                    st.markdown(answer)
+                                except Exception as e:
+                                    st.error(f"❌ AI response failed: {str(e)}")
                     
                     else:
-                        st.info("🔧 **Offline Analysis Mode Active**")
-                        st.markdown("""
-                        **Available Analysis:**
-                        - Basic financial ratio calculations
-                        - Standard industry benchmarking
-                        - Automated trend analysis
-                        - Risk assessment framework
-                        
-                        **To unlock AI-powered analysis:**
-                        1. Get a free API key from [OpenRouter.ai](https://openrouter.ai/)
-                        2. Configure it in the sidebar
-                        3. Access Microsoft Phi-4 reasoning capabilities
-                        """)
+                        st.warning("⚠️ AI service is currently unavailable. Using offline analysis mode.")
                         
                         # Offline analysis options
                         if st.button("📊 Run Offline Analysis"):
-                            data_text = data_processor.data.to_string()
-                            analysis = analyzer.analyze_financial_data(data_text, statement_type)
-                            st.markdown(analysis)
-                
+                            with st.spinner("Running offline analysis..."):
+                                try:
+                                    # Use the offline analyzer
+                                    offline_analyzer = OfflineAnalyzer()
+                                    data_text = data_processor.data.to_string()
+                                    analysis = offline_analyzer.analyze_financial_data(data_text, statement_type)
+                                    st.markdown(analysis)
+                                except Exception as e:
+                                    st.error(f"❌ Offline analysis failed: {str(e)}")
+
+          
                 with tab2:
                     st.markdown("## 📊 Financial Ratios Analysis")
                     
