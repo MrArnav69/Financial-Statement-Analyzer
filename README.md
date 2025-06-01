@@ -1,5 +1,9 @@
 # 🏦 Advanced Financial Statement Analyzer
 
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-red)](https://streamlit.io/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![AI Powered](https://img.shields.io/badge/AI-Microsoft%20Phi--4-purple)](https://openrouter.ai/)
 
 > **Transform your financial analysis with AI-powered insights and comprehensive analytics**
 
@@ -342,5 +346,11 @@ A: Verify that your data contains at least two numeric columns for visualization
 - **Reliability**: 99.9% uptime for core functionality
 
 ---
+
+<div align="center">
+
 **Built with ❤️ for financial professionals, analysts, and business owners**
 
+[🌟 Star this repo](https://github.com/yourusername/financial-statement-analyzer) • [🐛 Report Bug](https://github.com/yourusername/financial-statement-analyzer/issues) • [💡 Request Feature](https://github.com/yourusername/financial-statement-analyzer/issues)
+
+</div>
