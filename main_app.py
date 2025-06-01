@@ -15,7 +15,7 @@ from ai_analyzer import get_analyzer, Phi4Analyzer, OfflineAnalyzer
 from visualizations import FinancialVisualizer
 from config import *
 
-# Add these functions after the imports section (around line 15)
+
 
 def create_voice_explanation_component(text_content, voice_id="voice1"):
     """Create a text-to-speech component for explaining analysis"""
