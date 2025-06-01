@@ -45,7 +45,7 @@ A sophisticated financial statement analyzer that combines Microsoft Phi-4 reaso
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/financial-statement-analyzer.git
+git clone https://github.com/MrArnav69/Financial-Statement-Analyzer.git
 cd financial-statement-analyzer
 ```
 
