@@ -351,6 +351,6 @@ A: Verify that your data contains at least two numeric columns for visualization
 
 **Built with ❤️ for financial professionals, analysts, and business owners**
 
-[🌟 Star this repo](https://github.com/yourusername/financial-statement-analyzer) • [🐛 Report Bug](https://github.com/yourusername/financial-statement-analyzer/issues) • [💡 Request Feature](https://github.com/yourusername/financial-statement-analyzer/issues)
+[🌟 Star this repo](https://github.com/MrArnav69/Financial-Statement-Analyzer) • [🐛 Report Bug](https://github.com/MrArnav69/Financial-Statement-Analyzerr/issues) • [💡 Request Feature](https://github.com/MrArnav69/Financial-Statement-Analyzer/issues)
 
 </div>
