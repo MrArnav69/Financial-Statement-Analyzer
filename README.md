@@ -637,12 +637,6 @@ python -m pytest tests/test_voice_performance.py
 
 [🌟 Star this repo](https://github.com/MrArnav69/Financial-Statement-Analyzer) • [🐛 Report Bug](https://github.com/MrArnav69/Financial-Statement-Analyzer/issues) • [💡 Request Feature](https://github.com/MrArnav69/Financial-Statement-Analyzer/issues) • [🎤 Try Voice Demo](https://github.com/MrArnav69/Financial-Statement-Analyzer)
 
-### 🏆 Awards & Recognition
-- **Best Financial Tool 2024** - FinTech Innovation Awards
-- **Accessibility Excellence** - Web Accessibility Initiative
-- **AI Innovation Award** - Microsoft AI Challenge
-- **Open Source Project of the Year** - Developer Community Awards
-
 ### 📊 Project Statistics
 ![GitHub stars](https://img.shields.io/github/stars/MrArnav69/Financial-Statement-Analyzer?style=social)
 ![GitHub forks](https://img.shields.io/github/forks/MrArnav69/Financial-Statement-Analyzer?style=social)
