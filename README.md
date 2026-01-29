@@ -53,7 +53,7 @@ Ensure Python 3.8+ is installed on your system.
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
+   git clone git@github.com:MrArnav69/Financial-Statement-Analyzer.git
    cd Financial-Statement-Analyzer
    ```
 
